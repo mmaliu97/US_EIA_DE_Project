@@ -1,0 +1,19 @@
+version: 2
+
+sources:
+  - name: dev
+    database: db 
+    tables:
+      - name: raw_eia_fuel_data
+        columns:
+          - name: id 
+          - name: period 
+          - name: respondent 
+          - name: respondent_name 
+          - name: fueltype 
+          - name: type_name 
+          - name: timezone
+          - name: timezone_description
+          - name: value
+          - name: value_units
+          - name: inserted_at
