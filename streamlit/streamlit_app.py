@@ -6,15 +6,18 @@ import os
 # -----------------------------
 # DATABASE CONNECTION
 # -----------------------------
-DB_USER = "db_user"
-DB_PASS = "db_password"
-DB_HOST = os.environ.get("DB_HOST", "db")   # defaults to service name
+DB_HOST = os.environ.get("DB_HOST", "db")
 DB_PORT = int(os.environ.get("DB_PORT", 5432))
+DB_NAME = os.environ.get("DB_NAME", "db")
+DB_USER = os.environ.get("DB_USER")
+DB_PASS = os.environ.get("DB_PASS")
 
-DB_NAME = "db"
+if not all([DB_USER, DB_PASS]):
+    raise RuntimeError("Database credentials are not set in environment variables")
 
-engine = create_engine(f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}")
-
+engine = create_engine(
+    f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 @st.cache_data
 def load_data():
     query = """
