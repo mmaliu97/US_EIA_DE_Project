@@ -1,6 +1,10 @@
 import requests
+import os
 
-API_KEY = "eesWo2cNaJU0GbkFGXWhwDkxlVPSes4Y1rKA0sA4"
+API_KEY = os.environ.get("EIA_API_KEY")
+
+if not API_KEY:
+    raise RuntimeError("EIA_API_KEY is not set")
 
 BASE_URL = "https://api.eia.gov/v2/electricity/rto/daily-fuel-type-data/data/"
 
