@@ -60,22 +60,22 @@ services:
       - my-network
     command: run
 
-  streamlit:
-    container_name: streamlit
-    build: ./streamlit
-    ports:
-      - "8501:8501"
-    depends_on:
-      - db
-      - dbt
-    environment:
-      DB_HOST: ${APP_DB_HOST}
-      DB_PORT: ${APP_DB_PORT}
-      DB_NAME: ${APP_DB_NAME}
-      DB_USER: ${APP_DB_USER}
-      DB_PASS: ${APP_DB_PASSWORD}
-    networks:
-      - my-network
+  # streamlit:
+  #   container_name: streamlit
+  #   build: ./streamlit
+  #   ports:
+  #     - "8501:8501"
+  #   depends_on:
+  #     - db
+  #     - dbt
+  #   environment:
+  #     DB_HOST: ${APP_DB_HOST}
+  #     DB_PORT: ${APP_DB_PORT}
+  #     DB_NAME: ${APP_DB_NAME}
+  #     DB_USER: ${APP_DB_USER}
+  #     DB_PASS: ${APP_DB_PASSWORD}
+  #   networks:
+  #     - my-network
 
 
   # superset:

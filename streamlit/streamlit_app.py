@@ -3,20 +3,23 @@ import pandas as pd
 from sqlalchemy import create_engine
 import plotly.express as px
 import os
-# -----------------------------
-# DATABASE CONNECTION
-# -----------------------------
+
+from dotenv import load_dotenv
+load_dotenv(override=True)
+
+
 DB_HOST = os.environ.get("DB_HOST", "db")
 DB_PORT = int(os.environ.get("DB_PORT", 5432))
 DB_NAME = os.environ.get("DB_NAME", "db")
 DB_USER = os.environ.get("DB_USER")
-DB_PASS = os.environ.get("DB_PASS")
+DB_PASSWORD = os.environ.get("DB_PASSWORD")
 
-if not all([DB_USER, DB_PASS]):
+if not all([DB_USER, DB_PASSWORD]):
     raise RuntimeError("Database credentials are not set in environment variables")
 
 engine = create_engine(
-    f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
+    f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 )
 @st.cache_data
 def load_data():

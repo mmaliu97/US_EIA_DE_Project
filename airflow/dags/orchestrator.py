@@ -22,7 +22,7 @@ default_args = {
 dag = DAG(
     dag_id = "energy-api-dbt-orchestrator",
     default_args=default_args,
-    schedule=timedelta(minutes=1)
+    schedule=timedelta(minutes=30)
 
 )
 
