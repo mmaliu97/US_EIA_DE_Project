@@ -1,5 +1,6 @@
 import psycopg2
 import sys
+from psycopg2.extras import execute_batch
 
 # Adjust import path for Airflow
 sys.path.append('/opt/airflow/api_request')
@@ -7,6 +8,8 @@ sys.path.append('/opt/airflow/api_request')
 from api_request_scripts.api_request import fetch_data
 # from api_request import fetch_data
 
+import os
+from dotenv import load_dotenv
 
 # -----------------------
 #  Database Connection
@@ -16,12 +19,14 @@ def connect_to_db():
     print("Connecting to the PostgreSQL database...")
     try:
         conn = psycopg2.connect(
-            host="db",
+            host=os.getenv("DBT_HOST"),  # From .env
             port=5432,
-            dbname="db",
-            user="db_user",
-            password="db_password"
+            dbname=os.getenv("DBT_DATABASE", "neondb"),
+            user=os.getenv("DBT_USER", "neondb_owner"),
+            password=os.getenv("DBT_PASS"),
+            sslmode="require"  # REQUIRED for Neon
         )
+        print(f"Connected to {os.getenv('DBT_HOST')} successfully!")
         return conn
     except psycopg2.Error as e:
         print(f"Database connection failed: {e}")
@@ -37,9 +42,9 @@ def create_table(conn):
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            CREATE SCHEMA IF NOT EXISTS dev;
+            CREATE SCHEMA IF NOT EXISTS raw;
 
-            CREATE TABLE IF NOT EXISTS dev.raw_eia_fuel_data (
+            CREATE TABLE IF NOT EXISTS raw.raw_eia_fuel_data (
                 id SERIAL PRIMARY KEY,
                 period TIMESTAMP,
                 respondent TEXT,
@@ -63,54 +68,55 @@ def create_table(conn):
 # -----------------------
 #  Insert Records
 # -----------------------
-
 def insert_records(conn, data):
     print("Inserting EIA fuel-type records into database...")
 
-    try:
-        rows = data["response"]["data"]  # list of dicts from EIA API
+    rows = data["response"]["data"]
 
-        cursor = conn.cursor()
+    insert_query = """
+        INSERT INTO raw.raw_eia_fuel_data (
+            period,
+            respondent,
+            respondent_name,
+            fueltype,
+            type_name,
+            timezone,
+            timezone_description,
+            value,
+            value_units
+        ) VALUES (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s
+        )
+    """
 
-        insert_query = """
-            INSERT INTO dev.raw_eia_fuel_data (
-                period,
-                respondent,
-                respondent_name,
-                fueltype,
-                type_name,
-                timezone,
-                timezone_description,
-                value,
-                value_units
-            ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s
-            );
-        """
+    values = [
+        (
+            row.get("period"),
+            row.get("respondent"),
+            row.get("respondent-name"),
+            row.get("fueltype"),
+            row.get("type-name"),
+            row.get("timezone"),
+            row.get("timezone-description"),
+            int(row.get("value")) if row.get("value") not in [None, ""] else None,
+            row.get("value-units"),
+        )
+        for row in rows
+    ]
 
-        for row in rows:
-            cursor.execute(
-                insert_query,
-                (
-                    row.get("period"),
-                    row.get("respondent"),
-                    row.get("respondent-name"),
-                    row.get("fueltype"),
-                    row.get("type-name"),
-                    row.get("timezone"),
-                    row.get("timezone-description"),
-                    int(row.get("value")) if row.get("value") not in [None, ""] else None,
-                    row.get("value-units")
-                )
-            )
+    cursor = conn.cursor()
 
-        conn.commit()
-        print(f"Inserted {len(rows)} rows successfully.")
+    execute_batch(
+        cursor,
+        insert_query,
+        values,
+        page_size=500  # 👈 sweet spot for Neon
+    )
 
-    except psycopg2.Error as e:
-        print(f"Error inserting data into the database: {e}")
-        conn.rollback()
-        raise
+    conn.commit()
+    cursor.close()
+
+    print(f"Inserted {len(values)} rows successfully.")
 
 
 # -----------------------
@@ -133,4 +139,3 @@ def main():
             print("Database connection closed")
 
 
-main()

@@ -15,39 +15,50 @@ def safe_main_callable():
 
 default_args = {
     'description':'A DAG to orchestrate data',
-    'start_date':datetime(2025, 12, 4),
+    'start_date':datetime(2025, 12, 19),
     'catchup': False,
 }
 
-dag = DAG(
-    dag_id = "energy-api-dbt-orchestrator",
-    default_args=default_args,
-    schedule=timedelta(minutes=30)
-
-)
+dag = DAG( 
+        dag_id = "energy-api-dbt-orchestrator", 
+        default_args=default_args, 
+        schedule=timedelta(minutes=30) 
+            )
 
 with dag:
-    task1 = PythonOperator(
-        task_id='ingest_data_task',
-        python_callable=safe_main_callable
+    ingest = PythonOperator(
+        task_id="ingest_data",
+        python_callable=safe_main_callable,
     )
 
-    task2 =  DockerOperator(
-        task_id = 'transform_data_task',
-        image = 'ghcr.io/dbt-labs/dbt-postgres:1.9.latest',
-        command = 'run',
-        working_dir = '/usr/app',
+    transform = DockerOperator(
+        task_id="dbt_run",
+        image="ghcr.io/dbt-labs/dbt-postgres:1.9.latest",
+        command="run",
+        working_dir="/usr/app",
         mounts=[
-            Mount(source='/home/martin/repos/energy-data-project/dbt/my_project',
-                target='/usr/app',
-                type='bind'),
-            Mount(source='/home/martin/repos/energy-data-project/dbt/profiles.yml',
-                target='/root/.dbt/profiles.yml',
-                type='bind'),
+            Mount(
+                source="/home/martin/repos/energy-data-project/dbt/my_project",
+                target="/usr/app",
+                type="bind",
+            ),
+            Mount(
+                source="/home/martin/repos/energy-data-project/dbt/profiles.yml",
+                target="/root/.dbt/profiles.yml",
+                type="bind",
+            ),
         ],
-        network_mode='energy-data-project_my-network',
-        docker_url='unix://var/run/docker.sock',
-        auto_remove='success'
+         environment={
+            "DBT_HOST": os.getenv("DBT_HOST"),
+            "DBT_USER": os.getenv("DBT_USER"),
+            "DBT_PASS": os.getenv("DBT_PASS"),
+            "DBT_DATABASE": os.getenv("DBT_DATABASE"),
+            "DBT_PORT": "5432",
+            "PGSSLMODE": "require",
+        },
+        network_mode="energy-data-project_my-network",
+        docker_url="unix://var/run/docker.sock",
+        auto_remove='success',
     )
 
-    task1 >> task2
+    ingest >> transform

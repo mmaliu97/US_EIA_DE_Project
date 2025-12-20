@@ -6,22 +6,22 @@ x-superset-volumes: &superset-volumes
   # - ./docker/superset_config.py:/app/pythonpath/superset_config.py
 
 services:
-  db:
-    container_name: postgres_container_eia
-    image: postgres:14.20
-    ports:
-      - 5000:5432
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      EIA_API_KEY: ${EIA_API_KEY}
+  # db:
+  #   container_name: postgres_container_eia
+  #   image: postgres:14.20
+  #   ports:
+  #     - 5432:5432
+  #   environment:
+  #     POSTGRES_DB: ${POSTGRES_DB}
+  #     POSTGRES_USER: ${POSTGRES_USER}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+  #     EIA_API_KEY: ${EIA_API_KEY}
 
-    volumes:
-      - ./postgres/data:/var/lib/postgresql/data
-      - ./postgres/airflow_init.sql:/docker-entrypoint-initdb.d/airflow_init.sql
-    networks:
-      - my-network
+  #   volumes:
+  #     - ./postgres/data:/var/lib/postgresql/data
+  #     - ./postgres/airflow_init.sql:/docker-entrypoint-initdb.d/airflow_init.sql
+  #   networks:
+  #     - my-network
 
   af:
     container_name: airflow_container_eia
@@ -29,7 +29,12 @@ services:
     ports:
       - 8000:8080
     environment:
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@db:${POSTGRES_PORT}/${AIRFLOW_DB}
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${DBT_USER}:${DBT_PASS}@${DBT_HOST}:5432/neondb?sslmode=require
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      DBT_HOST: ${DBT_HOST}
+      DBT_USER: ${DBT_USER}
+      DBT_PASS: ${DBT_PASS}
+      DBT_DATABASE: ${DBT_DATABASE}
       EIA_API_KEY: ${EIA_API_KEY}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
@@ -37,103 +42,32 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     group_add:
       - '1001'
-    depends_on:
-      - db
     networks:
       - my-network
     command: >
       bash -c "airflow db migrate && airflow standalone"
 
-  dbt:
-    container_name: dbt_container_eia
-    image: ghcr.io/dbt-labs/dbt-postgres:1.9.latest
-    volumes:
-      - ./dbt/my_project:/usr/app
-      - ./dbt:/root/.dbt
-    working_dir: /usr/app
-    environment:
-      DBT_PROFILES_DIR: "/root/.dbt"
-      EIA_API_KEY: ${EIA_API_KEY}
-    depends_on:
-      - db
-    networks:
-      - my-network
-    command: run
-
-  # streamlit:
-  #   container_name: streamlit
-  #   build: ./streamlit
-  #   ports:
-  #     - "8501:8501"
-  #   depends_on:
-  #     - db
-  #     - dbt
+  # dbt:
+  #   container_name: dbt_container_eia
+  #   image: ghcr.io/dbt-labs/dbt-postgres:1.9.latest
+  #   volumes:
+  #     - ./dbt/my_project:/usr/app
+  #     - ./dbt:/root/.dbt
+  #   working_dir: /usr/app
   #   environment:
-  #     DB_HOST: ${APP_DB_HOST}
-  #     DB_PORT: ${APP_DB_PORT}
-  #     DB_NAME: ${APP_DB_NAME}
-  #     DB_USER: ${APP_DB_USER}
-  #     DB_PASS: ${APP_DB_PASSWORD}
+  #     DBT_HOST: ${DBT_HOST}
+  #     DBT_USER: neondb_owner
+  #     DBT_PASS: ${DBT_PASS}
+  #     DBT_PORT: 5432
+  #     DBT_DATABASE: ${DBT_DATABASE}
+  #     DBT_PROFILES_DIR: "/root/.dbt"
+  #     EIA_API_KEY: ${EIA_API_KEY}
+  #     # Required for Neon SSL
+  #     PGSSLMODE: require
+
   #   networks:
   #     - my-network
-
-
-  # superset:
-  #     env_file:
-  #       - path: docker/.env # default
-  #         required: true
-  #     image: apache/superset:3.0.0-py310
-  #     container_name: superset_app
-  #     command: ["/app/docker/docker-bootstrap.sh", "app"]
-  #     restart: unless-stopped
-  #     ports:
-  #       - 8088:8088
-  #     user: *superset-user
-  #     depends_on:
-  #       superset-init:
-  #         condition: service_completed_successfully
-  #     volumes: *superset-volumes
-  #     environment:
-  #       SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
-  #       DATABASE_DB: "superset_db"
-  #     networks:
-  #       - my-network
-
-  # superset-init:
-  #   image: apache/superset:3.0.0-py310
-  #   container_name: superset_init
-  #   command: ["/app/docker/docker-init.sh"]
-  #   env_file:
-  #     - path: docker/.env # default
-  #       required: true
-  #     - path: docker/.env-local # optional override
-  #       required: false
-  #   depends_on:
-  #     db:
-  #       condition: service_started
-  #     redis:
-  #       condition: service_started
-  #   user: *superset-user
-  #   volumes: *superset-volumes
-  #   environment:
-  #     SUPERSET_LOAD_EXAMPLES: "no"
-  #     SUPERSET_LOG_LEVEL: "${SUPERSET_LOG_LEVEL:-info}"
-  #     DATABASE_DB: "superset_db"
-  #   healthcheck:
-  #     disable: true
-  #   networks:
-  #     - my-network
-
-  # redis:
-  #     image: redis:7
-  #     container_name: superset_cache
-  #     restart: unless-stopped
-  #     ports:
-  #       - "127.0.0.1:6379:6379"
-  #     volumes:
-  #       - redis:/data
-  #     networks:
-  #       - my-network
+  #   command: run
 
 networks:
   my-network:

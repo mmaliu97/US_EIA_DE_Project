@@ -38,6 +38,23 @@ def load_data():
 
 monthly_totals = load_data()
 
+st.subheader("🔍 Filter by Fuel Type")
+
+fuel_options = sorted(monthly_totals["fueltype"].unique())
+selected_fuels = st.multiselect(
+    "Select fuel type(s)",
+    options=fuel_options,
+    default=fuel_options,  # show all by default
+)
+
+if selected_fuels:
+    filtered_df = monthly_totals[
+        monthly_totals["fueltype"].isin(selected_fuels)
+    ]
+else:
+    filtered_df = monthly_totals
+
+
 st.title("⚡ Energy Dashboard — Streamlit + Postgres + dbt")
 
 # -----------------------------
@@ -58,7 +75,7 @@ st.plotly_chart(fig1, use_container_width=True)
 # CHART 2 — Percentage Share
 # -----------------------------
 fig2 = px.line(
-    monthly_totals,
+    filtered_df,
     x="month",
     y="share_pct",
     color="fueltype",
