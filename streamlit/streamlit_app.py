@@ -94,6 +94,7 @@ st.title("⚡ Energy Dashboard — Streamlit + Postgres + dbt")
 st.subheader("🔍 Filter by Fuel Type")
 
 daily_totals["date_time"] = pd.to_datetime(daily_totals["date_time"])
+daily_totals["fuel_label"] = daily_totals["fueltype"].map(FUEL_LABELS)
 
 st.subheader("🗓️ Filter by Date Range")
 
@@ -107,7 +108,7 @@ start_date, end_date = st.date_input(
     max_value=max_date,
 )
 
-fuel_options = sorted(daily_totals["fueltype"].unique())
+fuel_options = sorted(daily_totals["fuel_label"].unique())
 selected_fuels = st.multiselect(
     "Select fuel type(s)",
     options=fuel_options,
@@ -119,7 +120,7 @@ filtered_df = daily_totals.copy()
 # Fuel filter
 if selected_fuels:
     filtered_df = filtered_df[
-        filtered_df["fueltype"].isin(selected_fuels)
+        filtered_df["fuel_label"].isin(selected_fuels)
     ]
 
 # Time filter
@@ -129,7 +130,6 @@ filtered_df = filtered_df[
 ]
 
 filtered_df = filtered_df.copy()
-filtered_df["fuel_label"] = filtered_df["fueltype"].map(FUEL_LABELS)
 
 fig2 = px.line(
     filtered_df,
