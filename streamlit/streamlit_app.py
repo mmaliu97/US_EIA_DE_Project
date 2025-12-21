@@ -22,6 +22,10 @@ engine = create_engine(
     connect_args={"sslmode": "require"},
 )
 
+# --------------
+# Loading Data
+# --------------
+
 @st.cache_data
 def load_data():
     query = """
@@ -38,29 +42,27 @@ def load_data():
 
 monthly_totals = load_data()
 
-st.subheader("🔍 Filter by Fuel Type")
+@st.cache_data
+def load_data():
+    query = """
+        SELECT 
+            date_time,
+            fueltype,
+            fueltype_daily_value,
+            daily_total,
+            share_pct
+        FROM analytics.daily_share   
+        ORDER BY date_time;
+    """
+    return pd.read_sql(query, engine)
 
-fuel_options = sorted(monthly_totals["fueltype"].unique())
-selected_fuels = st.multiselect(
-    "Select fuel type(s)",
-    options=fuel_options,
-    default=fuel_options,  # show all by default
-)
-
-if selected_fuels:
-    filtered_df = monthly_totals[
-        monthly_totals["fueltype"].isin(selected_fuels)
-    ]
-else:
-    filtered_df = monthly_totals
-
+daily_totals = load_data()
 
 st.title("⚡ Energy Dashboard — Streamlit + Postgres + dbt")
 
 # -----------------------------
 # CHART 1 — Monthly Totals Heatmap
 # -----------------------------
-
 
 fig1 = px.bar(
     monthly_totals,
@@ -74,13 +76,52 @@ st.plotly_chart(fig1, use_container_width=True)
 # -----------------------------
 # CHART 2 — Percentage Share
 # -----------------------------
+
+st.subheader("🔍 Filter by Fuel Type")
+
+daily_totals["date_time"] = pd.to_datetime(daily_totals["date_time"])
+
+st.subheader("🗓️ Filter by Date Range")
+
+min_date = daily_totals["date_time"].min().date()
+max_date = daily_totals["date_time"].max().date()
+
+start_date, end_date = st.date_input(
+    "Select date range",
+    value=(min_date, max_date),
+    min_value=min_date,
+    max_value=max_date,
+)
+
+fuel_options = sorted(daily_totals["fueltype"].unique())
+selected_fuels = st.multiselect(
+    "Select fuel type(s)",
+    options=fuel_options,
+    default=fuel_options,  # show all by default
+)
+
+filtered_df = daily_totals.copy()
+
+# Fuel filter
+if selected_fuels:
+    filtered_df = filtered_df[
+        filtered_df["fueltype"].isin(selected_fuels)
+    ]
+
+# Time filter
+filtered_df = filtered_df[
+    (filtered_df["date_time"].dt.date >= start_date) &
+    (filtered_df["date_time"].dt.date <= end_date)
+]
+
 fig2 = px.line(
     filtered_df,
-    x="month",
+    x="date_time",
     y="share_pct",
     color="fueltype",
     title="Share % of Each Fuel Type Over Time",
 )
+
 st.plotly_chart(fig2, use_container_width=True)
 
 # -----------------------------

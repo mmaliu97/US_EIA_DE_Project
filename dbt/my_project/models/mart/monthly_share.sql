@@ -1,6 +1,6 @@
 {{ config(
     materialized='table'
-)}}
+) }}
 
 with base as (
     select
@@ -14,7 +14,7 @@ with base as (
 -- 1) Aggregate total energy per month + fueltype
 monthly_totals as (
     select
-        date_part('month', date_time)::int as month,
+        date_trunc('month', date_time) as month_start,
         fueltype,
         sum(amt_energy) as value
     from base
@@ -25,24 +25,24 @@ monthly_totals as (
 monthly_totals_with_month_sum as (
     select
         mt.*,
-        sum(mt.value) over (partition by month) as monthly_total
+        sum(mt.value) over (partition by month_start) as monthly_total
     from monthly_totals mt
 ),
 
 -- 3) Compute share percentage
 monthly_share_calc as (
     select
-        month,
+        month_start,
         fueltype,
         value,
         monthly_total,
-        (value / monthly_total * 100.0) as share_pct
+        (value / nullif(monthly_total, 0) * 100.0) as share_pct
     from monthly_totals_with_month_sum
 )
 
--- 4) Sort (dbt materialization will store final table sorted)
+-- 4) Final select
 select
-    month,
+    month_start::date as month,
     fueltype,
     value as fueltype_monthly_value,
     monthly_total,
