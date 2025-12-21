@@ -22,6 +22,20 @@ engine = create_engine(
     connect_args={"sslmode": "require"},
 )
 
+# -------
+# Legend
+# -------
+
+FUEL_LABELS = {
+    "COL": "Coal",
+    "NG": "Natural Gas",
+    "NUC": "Nuclear",
+    "OIL": "Petroleum",
+    "SUN": "Solar",
+    "WND": "Wind",
+    "WAT": "Hydro",
+}
+
 # --------------
 # Loading Data
 # --------------
@@ -60,18 +74,18 @@ daily_totals = load_data()
 
 st.title("⚡ Energy Dashboard — Streamlit + Postgres + dbt")
 
-# -----------------------------
-# CHART 1 — Monthly Totals Heatmap
-# -----------------------------
+# # -----------------------------
+# # CHART 1 — Monthly Totals Heatmap
+# # -----------------------------
 
-fig1 = px.bar(
-    monthly_totals,
-    x="month",
-    y="fueltype_monthly_value",
-    color="fueltype",
-    title="Monthly Energy Consumption by Fuel Type",
-)
-st.plotly_chart(fig1, use_container_width=True)
+# fig1 = px.bar(
+#     monthly_totals,
+#     x="month",
+#     y="fueltype_monthly_value",
+#     color="fueltype",
+#     title="Monthly Energy Consumption by Fuel Type",
+# )
+# st.plotly_chart(fig1, use_container_width=True)
 
 # -----------------------------
 # CHART 2 — Percentage Share
@@ -114,11 +128,14 @@ filtered_df = filtered_df[
     (filtered_df["date_time"].dt.date <= end_date)
 ]
 
+filtered_df = filtered_df.copy()
+filtered_df["fuel_label"] = filtered_df["fueltype"].map(FUEL_LABELS)
+
 fig2 = px.line(
     filtered_df,
     x="date_time",
     y="share_pct",
-    color="fueltype",
+    color="fuel_label",
     title="Share % of Each Fuel Type Over Time",
 )
 
