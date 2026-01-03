@@ -22,51 +22,37 @@ engine = create_engine(
     connect_args={"sslmode": "require"},
 )
 
-# -------
-# Legend
-# -------
-
-FUEL_LABELS = {
-    "COL": "Coal",
-    "NG": "Natural Gas",
-    "NUC": "Nuclear",
-    "OIL": "Petroleum",
-    "SUN": "Solar",
-    "WND": "Wind",
-    "WAT": "Hydro",
-}
-
 # --------------
 # Loading Data
 # --------------
 
+# @st.cache_data
+# def load_data():
+#     query = """
+#         SELECT 
+#             month,
+#             type_name,
+#             fueltype_monthly_value,
+#             monthly_total,
+#             share_pct
+#         FROM analytics.monthly_share   
+#         ORDER BY month;
+#     """
+#     return pd.read_sql(query, engine)
+
+# monthly_totals = load_data()
+
 @st.cache_data
 def load_data():
     query = """
         SELECT 
-            month,
-            fueltype,
-            fueltype_monthly_value,
-            monthly_total,
-            share_pct
-        FROM analytics.monthly_share   
-        ORDER BY month;
-    """
-    return pd.read_sql(query, engine)
-
-monthly_totals = load_data()
-
-@st.cache_data
-def load_data():
-    query = """
-        SELECT 
-            date_time,
-            fueltype,
+            day,
+            type_name,
             fueltype_daily_value,
             daily_total,
             share_pct
         FROM analytics.daily_share   
-        ORDER BY date_time;
+        ORDER BY day;
     """
     return pd.read_sql(query, engine)
 
@@ -91,15 +77,15 @@ st.title("⚡ Energy Dashboard — Streamlit + Postgres + dbt")
 # CHART 2 — Percentage Share
 # -----------------------------
 
-st.subheader("🔍 Filter by Fuel Type")
 
-daily_totals["date_time"] = pd.to_datetime(daily_totals["date_time"])
-daily_totals["fuel_label"] = daily_totals["fueltype"].map(FUEL_LABELS)
+daily_totals["day"] = pd.to_datetime(daily_totals["day"])
+
+
+min_date = daily_totals["day"].min().date()
+max_date = daily_totals["day"].max().date()
 
 st.subheader("🗓️ Filter by Date Range")
 
-min_date = daily_totals["date_time"].min().date()
-max_date = daily_totals["date_time"].max().date()
 
 start_date, end_date = st.date_input(
     "Select date range",
@@ -108,7 +94,9 @@ start_date, end_date = st.date_input(
     max_value=max_date,
 )
 
-fuel_options = sorted(daily_totals["fuel_label"].unique())
+st.subheader("🔍 Filter by Fuel Type")
+
+fuel_options = sorted(daily_totals["type_name"].unique())
 selected_fuels = st.multiselect(
     "Select fuel type(s)",
     options=fuel_options,
@@ -120,22 +108,20 @@ filtered_df = daily_totals.copy()
 # Fuel filter
 if selected_fuels:
     filtered_df = filtered_df[
-        filtered_df["fuel_label"].isin(selected_fuels)
+        filtered_df["type_name"].isin(selected_fuels)
     ]
 
 # Time filter
 filtered_df = filtered_df[
-    (filtered_df["date_time"].dt.date >= start_date) &
-    (filtered_df["date_time"].dt.date <= end_date)
+    (filtered_df["day"].dt.date >= start_date) &
+    (filtered_df["day"].dt.date <= end_date)
 ]
-
-filtered_df = filtered_df.copy()
 
 fig2 = px.line(
     filtered_df,
-    x="date_time",
+    x="day",
     y="share_pct",
-    color="fuel_label",
+    color="type_name",
     title="Share % of Each Fuel Type Over Time",
 )
 

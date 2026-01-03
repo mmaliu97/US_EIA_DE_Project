@@ -10,7 +10,7 @@ from docker.types import Mount
 sys.path.append('/opt/airflow/api_request')
 
 def safe_main_callable():
-    from api_request_scripts.backfill_records import main
+    from api_request_scripts.insert_records import main
     return main()
 
 default_args = {
@@ -61,4 +61,3 @@ with dag:
         auto_remove='success',
     )
 
-    ingest >> transform

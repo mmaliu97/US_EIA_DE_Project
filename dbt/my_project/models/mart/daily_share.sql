@@ -6,22 +6,22 @@ with base as (
     select
         id,
         date_time::date as day,
-        fueltype,
+        type_name,
         amt_energy
     from {{ ref('stg_energy_data') }}
 ),
 
--- 1) Aggregate total energy per day + fueltype
+-- 1) Aggregate total energy per day + type_name
 daily_totals as (
     select
         day,
-        fueltype,
+        type_name,
         sum(amt_energy) as value
     from base
     group by 1, 2
 ),
 
--- 2) Compute daily total (sum across all fueltypes)
+-- 2) Compute daily total (sum across all type_names)
 daily_totals_with_day_sum as (
     select
         dt.*,
@@ -33,19 +33,19 @@ daily_totals_with_day_sum as (
 daily_share_calc as (
     select
         day,
-        fueltype,
+        type_name,
         value,
         daily_total,
-        (value / nullif(daily_total, 0) * 100.0) as share_pct
+        (value / daily_total * 100.0) as share_pct
     from daily_totals_with_day_sum
 )
 
 -- 4) Final select
 select
-    day::timestamp as date_time,
-    fueltype,
+    day,
+    type_name,
     value as fueltype_daily_value,
     daily_total,
     share_pct
 from daily_share_calc
-order by date_time, share_pct desc
+order by day, share_pct desc

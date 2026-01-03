@@ -5,7 +5,7 @@ from psycopg2.extras import execute_batch
 # Adjust import path for Airflow
 sys.path.append('/opt/airflow/api_request')
 
-from api_request_scripts.api_request import fetch_data
+from api_request_scripts.backfill_records import fetch_data
 from api_request_scripts.backfill_eia_monthly import fetch_month_data
 
 import os

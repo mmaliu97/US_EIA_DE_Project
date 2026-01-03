@@ -5,7 +5,7 @@ from psycopg2.extras import execute_batch
 # Adjust import path for Airflow
 sys.path.append('/opt/airflow/api_request')
 
-from api_request_scripts.api_request import fetch_data
+from api_request_scripts.eia_monthly import fetch_data
 # from api_request import fetch_data
 
 import os
@@ -87,6 +87,7 @@ def insert_records(conn, data):
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s, %s
         )
+        ON CONFLICT (period, respondent, fueltype) DO NOTHING
     """
 
     values = [
