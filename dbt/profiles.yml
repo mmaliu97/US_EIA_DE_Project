@@ -1,12 +1,14 @@
+# ./dbt/profiles.yml
 my_project:
+  target: dev
   outputs:
     dev:
-      dbname: db
-      host: db
-      pass: db_password
-      port: 5432
-      schema: dev
-      threads: 4
       type: postgres
-      user: db_user
-  target: dev
+      host: "{{ env_var('DBT_HOST') }}"
+      user: "{{ env_var('DBT_USER') }}"
+      pass: "{{ env_var('DBT_PASS') }}"
+      port: 5432
+      dbname: "{{ env_var('DBT_DATABASE') }}"
+      schema: analytics  # Will create 'analytics' schema in Neon
+      threads: 4
+      sslmode: require  # CRITICAL for Neon

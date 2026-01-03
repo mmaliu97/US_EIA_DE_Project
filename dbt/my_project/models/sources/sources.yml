@@ -1,8 +1,9 @@
 version: 2
 
 sources:
-  - name: dev
-    database: db 
+  - name: raw
+    schema: raw
+    database: neondb 
     tables:
       - name: raw_eia_fuel_data
         columns:

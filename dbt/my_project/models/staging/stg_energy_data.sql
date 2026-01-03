@@ -4,7 +4,7 @@
 
 with source as (
     select *
-    from {{ source('dev', 'raw_eia_fuel_data') }}
+    from {{ source('raw', 'raw_eia_fuel_data') }}
 ),
 
 de_dup as (

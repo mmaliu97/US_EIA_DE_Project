@@ -8,7 +8,7 @@ select
     date_time,
     extract(month from date_time) as month,
     respondent,
-    fueltype,
+    type_name,
     timezone,
     amt_energy,
     value_units

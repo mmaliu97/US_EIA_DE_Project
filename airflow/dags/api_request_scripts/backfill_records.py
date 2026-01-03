@@ -5,11 +5,13 @@ from psycopg2.extras import execute_batch
 # Adjust import path for Airflow
 sys.path.append('/opt/airflow/api_request')
 
-from api_request_scripts.eia_monthly import fetch_data
-# from api_request import fetch_data
+from api_request_scripts.backfill_records import fetch_data
+from api_request_scripts.backfill_eia_monthly import fetch_month_data
 
 import os
 from dotenv import load_dotenv
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 # -----------------------
 #  Database Connection
@@ -87,7 +89,6 @@ def insert_records(conn, data):
         ) VALUES (
             %s, %s, %s, %s, %s, %s, %s, %s, %s
         )
-        ON CONFLICT (period, respondent, fueltype) DO NOTHING
     """
 
     values = [
@@ -119,23 +120,51 @@ def insert_records(conn, data):
 
     print(f"Inserted {len(values)} rows successfully.")
 
+# -----------------------
+#  Defining monthly range of data
+# -----------------------
+
+def month_range(start: date, end: date):
+    current = start.replace(day=1)
+    while current <= end:
+        yield current
+        current += relativedelta(months=1)
 
 # -----------------------
 #  Main Execution
 # -----------------------
 
 def main():
+    conn = None
     try:
-        data = fetch_data()
         conn = connect_to_db()
         create_table(conn)
-        insert_records(conn, data)
+
+        start_month = date(2020, 1, 1)
+        today = date.today()
+
+        for month_start in month_range(start_month, today):
+            month_end = (month_start + relativedelta(months=1)) - relativedelta(days=1)
+            if month_end > today:
+                month_end = today
+
+            print(f"\n=== Processing {month_start:%Y-%m} ===")
+
+            data = fetch_month_data(month_start, month_end)
+
+            rows = data.get("response", {}).get("data", [])
+            if not rows:
+                print("No data returned for this month.")
+                continue
+
+            insert_records(conn, data)
 
     except Exception as e:
         print(f"An error occurred during execution: {e}")
+        raise
 
     finally:
-        if 'conn' in locals():
+        if conn:
             conn.close()
             print("Database connection closed")
 
