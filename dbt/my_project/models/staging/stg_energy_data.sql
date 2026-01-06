@@ -32,7 +32,6 @@ select
     fueltype,
     type_name,
     timezone,
-    timezone_description,
     value as amt_energy,
     value_units,
 

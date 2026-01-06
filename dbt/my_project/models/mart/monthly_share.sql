@@ -6,26 +6,33 @@ with base as (
     select
         id,
         date_time,
+        timezone,
         type_name,
         amt_energy
     from {{ ref('stg_energy_data') }}
 ),
 
--- 1) Aggregate total energy per month + type_name
+-- 1) Aggregate total energy per month + type_name + timezone
 monthly_totals as (
     select
         date_trunc('month', date_time) as month_start,
+        timezone,
         type_name,
         sum(amt_energy) as value
     from base
-    group by 1, 2
+    group by
+        month_start,
+        timezone,
+        type_name
 ),
 
--- 2) Compute monthly total (sum across all type_names)
+-- 2) Compute monthly total (sum across all type_names) per timezone
 monthly_totals_with_month_sum as (
     select
         mt.*,
-        sum(mt.value) over (partition by month_start) as monthly_total
+        sum(mt.value) over (
+            partition by mt.month_start, mt.timezone
+        ) as monthly_total
     from monthly_totals mt
 ),
 
@@ -33,6 +40,7 @@ monthly_totals_with_month_sum as (
 monthly_share_calc as (
     select
         month_start,
+        timezone,
         type_name,
         value,
         monthly_total,
@@ -43,9 +51,13 @@ monthly_share_calc as (
 -- 4) Final select
 select
     month_start::date as month,
+    timezone,
     type_name,
     value as fueltype_monthly_value,
     monthly_total,
     share_pct
 from monthly_share_calc
-order by month, share_pct desc
+order by
+    month,
+    timezone,
+    share_pct desc
